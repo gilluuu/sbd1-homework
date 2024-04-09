@@ -33,6 +33,7 @@ Initialise the needed libraries to execute the rmd-file:
 # Libraries used in Homework1
 library(tidyverse)
 library(tsibble)
+library(ggplot2)
 ````
 
 ## 2.2 Datasets
@@ -109,54 +110,45 @@ america_filtered_years <- america_filtered_date %>%
   select(party, term_start, term_end)
 
 # Correct the missing date of Biden's presidency
-current_date <- Sys.Date()
-america_filtered_years <- america_filtered_years %>%
-  mutate(term_end = ifelse(is.na(term_end), current_date, term_end))
+america_filtered_years$term_end[is.na(america_filtered_years$term_end)] <- as.Date("2024-04-09")
 
 rm(america_filtered_party, america_filtered_date)
 ```
 
+In this step, we add the ruling parties for each of the years since Carters presidency:
 ```{r load-saving-rate}
-# Keep only party, name, term_start and term_end
-america_filtered_party <- america %>%
-  select(party, name, term_start, term_end)
-
-# Format date to match the style of the combined_data data
-america_filtered_date <- america_filtered_party %>%
-  mutate(term_start = as.Date(as.character(term_start), format = "%Y%m%d"),
-         term_end = as.Date(as.character(term_end), format = "%Y%m%d"))
-
-# Keep only the dates as of Carter's presidency
-america_filtered_years <- america_filtered_date %>%
-  filter(term_start >= as.Date("1977-01-01")) %>%
-  select(party, term_start, term_end)
-
-rm(america_filtered_party, america_filtered_date)
-```
-
------> Funktioniert noch nicht!! Next we check,
-
-```{r load-saving-rate}
-# Funktion, um die Parteizugehörigkeit zu finden
-find_party <- function(date, parties) {
-  party <- parties$party[which(parties$term_start <= date & parties$term_end >= date)]
-  if (length(party) == 1) {
-    return(party)
-  } else {
-    return(NA)  # Gibt NA zurück, wenn keine Partei gefunden wird
-  }
-}
-
-# Ergänze die 'Party'-Spalte in 'tsibble_data' durch Iterieren über jede Zeile
-tsibble_data <- tsibble_data %>%
+# Generiere eine Sequenz von Daten für jede Partei und deren Amtszeit
+party_dates <- america_filtered_years %>%
   rowwise() %>%
-  mutate(Party = find_party(DATE, america_filtered_years))
-
-# Entferne die Zeilweise-Gruppierung, da sie nicht mehr benötigt wird
-tsibble_data <- tsibble_data %>%
+  do(data.frame(DATE = seq(.$term_start, .$term_end, by="day"), Party = .$party)) %>%
   ungroup()
+
+# Füge die Parteizugehörigkeit zu tsibble_data basierend auf dem Datum hinzu
+tsibble_data <- left_join(tsibble_data, party_dates, by = "DATE")
 ```
 
+Here we visualize the data. Highlighted are the election years as well as each ruling party
+```{r load-saving-rate}
+# Here we select the election years
+election_years <- c(1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020)
+election_dates <- as.Date(paste(election_years, "01", "01", sep = "-"))
 
+# Unemployment with ruling parties
+ggplot(tsibble_data, aes(x = DATE, y = UNEMPLOY, color = Party)) +
+  geom_line() +
+  geom_vline(xintercept = as.numeric(election_dates), color = "grey", linetype = "dashed") +
+  scale_color_manual(values = c("Democratic" = "blue", "Republican" = "red")) +
+  labs(title = "Unemployment with ruling parties and election years",
+       x = "Year", y = "Unemployment")
+
+# Personal Saving Rate with ruling parties
+ggplot(tsibble_data, aes(x = DATE, y = PSAVERT, color = Party)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date(paste(election_years, "-01-01")), color = "grey", linetype = "dashed") +
+  scale_color_manual(values = c("Democratic" = "blue", "Republican" = "red")) +
+  labs(title = "Personal Saving Rate with ruling parties and election years",
+       x = "Year", y = "Personal Saving Rate")
+
+```
 
 
