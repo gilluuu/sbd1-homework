@@ -1,0 +1,162 @@
+---
+title: "Homework1"
+author: "Gilles Nikles, Simon Erni, Vladyslav Gorbunov"
+date: "2024-04-06"
+output:
+  pdf:
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Introduction
+
+Kurze Einführung in das Projekt und die Zielsetzungen.
+
+# 2. Preparings
+
+## 2.1 Libraries
+
+Install the libraries first if not available in the environment:
+
+````{r setup, include=FALSE}
+# Uncomment the following install-commands if needed
+# install.packages("tsibble")
+````
+
+Initialise the needed libraries to execute the rmd-file:
+
+````{r message=FALSE}
+# Libraries used in Homework1
+library(tidyverse)
+library(tsibble)
+````
+
+## 2.2 Datasets
+
+Import the Datasets:
+
+````{r message=FALSE}
+# Libraries used in Homework1
+pop <- read_csv("POP.csv")
+psavert <- read_csv("PSAVERT.csv")
+unemploy <- read_csv("UNEMPLOY.csv")
+````
+
+## 2.3 Combine Datasets
+
+````{r message=FALSE}
+# Combine Datasets, we use the 'DATE' field as common column
+combined_data <- pop %>%
+  inner_join(psavert, by = "DATE") %>%
+  inner_join(unemploy, by = "DATE")
+````
+
+# 3. Tasks
+
+## 3.1 Task 1
+
+Create a tsibble-Object out of the merged data:
+```{r load-saving-rate}
+# Create a tsibble-Object
+tsibble_data <- as_tsibble(combined_data, index = DATE)
+```
+
+
+In the next step, we create timeplots for the Unemployment and Personal Saving Rate
+```{r load-saving-rate}
+# Timeplot for Unemployment
+ggplot(tsibble_data, aes(x = DATE, y = UNEMPLOY)) +
+  geom_line() +
+  labs(title = "Timeplot for Unemployment", x = "Date", y = "Unemployment")
+
+# Timeplot for Personal Saving Rate
+ggplot(tsibble_data, aes(x = DATE, y = PSAVERT)) +
+  geom_line() +
+  labs(title = "Timeplot for Personal Saving Rate", x = "Date", y = "Personal Saving Rate")
+
+```
+
+
+## 3.2 Task 2
+
+In order to compare the data available to us with information on the governing party and its election year, we need to import the data. We use the dataset 'countries' from the collection 'topicalsource' from dolthub. The data is available here:
+https://www.dolthub.com/repositories/topicalsource/countries/data/main/leaders
+
+```{r load-saving-rate}
+# Import the dataset
+america <- read_csv("topicalsource_countries_main_leaders.csv", show_col_types = FALSE)
+```
+
+In the next step, we do a short clean-up of the data. This includes removing columns that are not necessary to use in this homework as well as only keeping the parties as of Carter's presidency.
+
+```{r load-saving-rate}
+# Keep only party, name, term_start and term_end
+america_filtered_party <- america %>%
+  select(party, name, term_start, term_end)
+
+# Format date to match the style of the combined_data data
+america_filtered_date <- america_filtered_party %>%
+  mutate(term_start = as.Date(as.character(term_start), format = "%Y%m%d"),
+         term_end = as.Date(as.character(term_end), format = "%Y%m%d"))
+
+# Keep only the dates as of Carter's presidency
+america_filtered_years <- america_filtered_date %>%
+  filter(term_start >= as.Date("1977-01-01")) %>%
+  select(party, term_start, term_end)
+
+# Correct the missing date of Biden's presidency
+current_date <- Sys.Date()
+america_filtered_years <- america_filtered_years %>%
+  mutate(term_end = ifelse(is.na(term_end), current_date, term_end))
+
+rm(america_filtered_party, america_filtered_date)
+```
+
+```{r load-saving-rate}
+# Keep only party, name, term_start and term_end
+america_filtered_party <- america %>%
+  select(party, name, term_start, term_end)
+
+# Format date to match the style of the combined_data data
+america_filtered_date <- america_filtered_party %>%
+  mutate(term_start = as.Date(as.character(term_start), format = "%Y%m%d"),
+         term_end = as.Date(as.character(term_end), format = "%Y%m%d"))
+
+# Keep only the dates as of Carter's presidency
+america_filtered_years <- america_filtered_date %>%
+  filter(term_start >= as.Date("1977-01-01")) %>%
+  select(party, term_start, term_end)
+
+rm(america_filtered_party, america_filtered_date)
+```
+
+-----> Funktioniert noch nicht!! Next we check,
+
+```{r load-saving-rate}
+# Funktion, um die Parteizugehörigkeit zu finden
+find_party <- function(date, parties) {
+  party <- parties$party[which(parties$term_start <= date & parties$term_end >= date)]
+  if (length(party) == 1) {
+    return(party)
+  } else {
+    return(NA)  # Gibt NA zurück, wenn keine Partei gefunden wird
+  }
+}
+
+# Ergänze die 'Party'-Spalte in 'tsibble_data' durch Iterieren über jede Zeile
+tsibble_data <- tsibble_data %>%
+  rowwise() %>%
+  mutate(Party = find_party(DATE, america_filtered_years))
+
+# Entferne die Zeilweise-Gruppierung, da sie nicht mehr benötigt wird
+tsibble_data <- tsibble_data %>%
+  ungroup()
+```
+
+
+
+
