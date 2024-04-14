@@ -61,14 +61,14 @@ combined_data <- pop %>%
 ## 3.1 Task 1
 
 Create a tsibble-Object out of the merged data:
-```{r load-saving-rate}
+```{r message=FALSE}
 # Create a tsibble-Object
 tsibble_data <- as_tsibble(combined_data, index = DATE)
 ```
 
 
 In the next step, we create timeplots for the Unemployment and Personal Saving Rate
-```{r load-saving-rate}
+```{r message=FALSE}
 # Timeplot for Unemployment
 ggplot(tsibble_data, aes(x = DATE, y = UNEMPLOY)) +
   geom_line() +
@@ -87,14 +87,14 @@ ggplot(tsibble_data, aes(x = DATE, y = PSAVERT)) +
 In order to compare the data available to us with information on the governing party and its election year, we need to import the data. We use the dataset 'countries' from the collection 'topicalsource' from dolthub. The data is available here:
 https://www.dolthub.com/repositories/topicalsource/countries/data/main/leaders
 
-```{r load-saving-rate}
+```{r message=FALSE}
 # Import the dataset
 america <- read_csv("topicalsource_countries_main_leaders.csv", show_col_types = FALSE)
 ```
 
 In the next step, we do a short clean-up of the data. This includes removing columns that are not necessary to use in this homework as well as only keeping the parties as of Carter's presidency.
 
-```{r load-saving-rate}
+```{r message=FALSE}
 # Keep only party, name, term_start and term_end
 america_filtered_party <- america %>%
   select(party, name, term_start, term_end)
@@ -116,7 +116,7 @@ rm(america_filtered_party, america_filtered_date)
 ```
 
 In this step, we add the ruling parties for each of the years since Carters presidency:
-```{r load-saving-rate}
+```{r message=FALSE}
 # Generiere eine Sequenz von Daten für jede Partei und deren Amtszeit
 party_dates <- america_filtered_years %>%
   rowwise() %>%
@@ -128,7 +128,7 @@ tsibble_data <- left_join(tsibble_data, party_dates, by = "DATE")
 ```
 
 Here we visualize the data. Highlighted are the election years as well as each ruling party
-```{r load-saving-rate}
+```{r message=FALSE}
 # Here we select the election years
 election_years <- c(1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020)
 election_dates <- as.Date(paste(election_years, "01", "01", sep = "-"))
